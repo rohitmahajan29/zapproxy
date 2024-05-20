@@ -67,11 +67,16 @@ if [ -f "$JVMPROPS" ]; then
 elif [ "$OS" = "Linux" ]; then
     HOSTMEM=$(expr $(sed -n 's/MemTotal:[ ]\{1,\}\([0-9]\{1,\}\) kB/\1/p' /proc/meminfo) / 1024)
     if [ "$IS_CONTAINERIZED" = "true" ]; then
-        # If we are running in a container, we need to use the cgroup memory limit
-        MEMLIMIT=$(grep hierarchical_memory_limit /sys/fs/cgroup/memory/memory.stat | cut -d' ' -f2)
-        MEM=$(expr $MEMLIMIT / 1024 / 1024)
-        # If the cgroup memory limit is not set, use the host memory
-        if [ "$MEMLIMIT" -eq "9223372036854771712" ]; then
+        # Check if memory.stat exists to determine if we are running in a container 
+        if [ -f /sys/fs/cgroup/memory/memory.stat ]; then
+            # If we are running in a container, we need to use the cgroup memory limit
+            MEMLIMIT=$(grep hierarchical_memory_limit /sys/fs/cgroup/memory/memory.stat | cut -d' ' -f2)
+            MEM=$(expr $MEMLIMIT / 1024 / 1024)
+            # If the cgroup memory limit is not set, use the host memory
+            if [ "$MEMLIMIT" -eq "9223372036854771712" ]; then
+                MEM=$HOSTMEM
+            fi
+        else
             MEM=$HOSTMEM
         fi
     else
